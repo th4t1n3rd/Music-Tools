@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cadences">
+<meta name="theme-color" content="#0b0f1a">
+<title>Cadence Trainer</title>
+<style>
+  :root {
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Mono', 'Roboto Mono', monospace;
+    --bg:        #0b0f1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    #1e2d45;
+    --accent:    #38bdf8;
+    --accent2:   #818cf8;
+    --accent3:   #34d399;
+    --lit-glow:  rgba(56,189,248,0.35);
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --white-key: #dde6f0;
+    --wrong:     #f87171;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  header { margin-top: 1.6rem; text-align: center; margin-bottom: 1.4rem; }
+  header h1 {
+    font-family: var(--font-mono);
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  header p {
+    margin-top: 0.9rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* mode + key controls */
+  .top-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 2rem;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .control-group label {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+
+  .tab-row {
+    display: flex;
+    gap: 0.4rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.3rem;
+  }
+  .tab {
+    padding: 0.5rem 1.4rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.18s;
+  }
+  .tab.active { background: var(--accent); color: #0b0f1a; font-weight: 700; }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    padding: 0.55rem 2.2rem 0.55rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2338bdf8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .panel {
+    width: 100%;
+    max-width: 640px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .panel h2 {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.8rem;
+  }
+
+  /* cadence cards (learn mode) */
+  .cadence-list { display: flex; flex-direction: column; gap: 0.8rem; }
+  .cadence-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.05s;
+  }
+  .cadence-card:hover { border-color: var(--accent); }
+  .cadence-card.active { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2); }
+  .cadence-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+  .cadence-name { font-size: 1.05rem; font-weight: 600; color: var(--text); }
+  .cadence-roman {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .cadence-chords {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent2);
+    margin-top: 0.35rem;
+  }
+  .cadence-desc { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.5; }
+
+  .play-row { display: flex; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.95rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #06283a; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover { background: #7fd4ff; color: #06283a; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* mini keyboard */
+  .kb-caption {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 0.7rem;
+    min-height: 1em;
+  }
+  .kb-caption .hl { color: var(--accent); font-weight: 700; }
+  .kb-scroll { max-width: 100%; overflow-x: auto; padding-bottom: 4px; display: flex; justify-content: center; }
+  .piano-case {
+    display: inline-block;
+    padding: 0 8px 10px;
+    background: linear-gradient(180deg, #16233b 0%, #0e1729 100%);
+    border: 1px solid #28384f;
+    border-radius: 9px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 22px -12px rgba(0,0,0,0.8);
+  }
+  .piano {
+    display: flex;
+    position: relative;
+    height: 120px;
+    width: max-content;
+    user-select: none;
+    border-top: 4px solid #6d2233;
+    border-radius: 3px;
+    box-shadow: inset 0 6px 8px -6px rgba(0,0,0,0.85);
+  }
+  .wk {
+    position: relative;
+    width: 26px; height: 116px;
+    background: linear-gradient(180deg, #f7fafc 0%, #e7edf4 62%, #d4dde8 100%);
+    border-left: 1px solid #b3c0cf;
+    border-right: 1px solid #93a4b8;
+    border-bottom: 1px solid #8595a8;
+    border-radius: 0 0 4px 4px;
+    flex-shrink: 0;
+    box-shadow: inset -2px 0 3px -2px rgba(0,0,0,0.18);
+  }
+  .bk {
+    position: absolute;
+    width: 16px; height: 74px;
+    background: linear-gradient(180deg, #3a4458 0%, #1a2333 18%, #0b1019 100%);
+    border: 1px solid #05080d;
+    border-radius: 0 0 3px 3px;
+    z-index: 2; top: 0;
+    box-shadow: inset 0 2px 1px rgba(255,255,255,0.18), 1px 3px 5px rgba(0,0,0,0.5);
+  }
+  /* chord-tone colour groups: chord 1 = cyan, chord 2 = indigo */
+  .wk.c1 { background: linear-gradient(180deg, #f7fafc 0%, #e3f4fd 55%, #bfe6fb 100%); border-color: #6fbfe0; box-shadow: inset 0 -22px 18px -15px var(--accent); }
+  .wk.c2 { background: linear-gradient(180deg, #f3f1ff 0%, #d9d6ff 50%, #b3b0fb 100%); border-color: #6b6ae8; box-shadow: inset 0 -22px 18px -15px var(--accent2); }
+  .bk.c1 { background: linear-gradient(180deg, #7fd4ff 0%, #2aa9e8 55%, #1488c4 100%); border-color: #0c84bb; }
+  .bk.c2 { background: linear-gradient(180deg, #b3bcff 0%, #7079f2 55%, #555fe6 100%); border-color: #4a50d8; }
+
+  .wk .lbl, .bk .lbl {
+    position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+    display: none; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    font-family: var(--font-mono); font-size: 0.5rem; font-weight: 700;
+    pointer-events: none;
+  }
+  .wk.c1 .lbl, .wk.c2 .lbl { display: flex; }
+  .wk.c1 .lbl { background: var(--accent); color: #06283a; }
+  .wk.c2 .lbl { background: var(--accent2); color: #1a1740; }
+  .bk .lbl { bottom: 6px; width: 14px; height: 14px; font-size: 0.42rem; }
+  .bk.c1 .lbl { display: flex; background: #06283a; color: #7fd4ff; border: 1px solid rgba(255,255,255,0.5); }
+  .bk.c2 .lbl { display: flex; background: #1a1740; color: #c7ccff; border: 1px solid rgba(255,255,255,0.6); }
+
+  /* practice mode */
+  .quiz-q { text-align: center; }
+  .quiz-prompt { font-size: 1rem; color: var(--text); margin-bottom: 1.2rem; line-height: 1.5; }
+  .quiz-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+  .quiz-opt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 0.9rem 0.7rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .quiz-opt:hover { border-color: var(--accent); }
+  .quiz-opt .qn { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+  .quiz-opt .qr { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+  .quiz-opt.correct { border-color: var(--accent3); background: rgba(52,211,153,0.16); box-shadow: 0 0 0 1px var(--accent3); }
+  .quiz-opt.wrong { border-color: var(--wrong); background: rgba(248,113,113,0.16); box-shadow: 0 0 0 1px var(--wrong); }
+  .quiz-opt:disabled { cursor: default; }
+
+  .score-row {
+    display: flex; justify-content: center; gap: 1.5rem;
+    font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted);
+    margin-top: 1.3rem;
+  }
+  .score-row b { color: var(--accent); }
+
+  .feedback { text-align: center; min-height: 1.4em; margin-top: 1rem; font-size: 0.9rem; font-weight: 600; }
+  .feedback.ok { color: var(--accent3); }
+  .feedback.no { color: var(--wrong); }
+
+  .hidden { display: none !important; }
+
+  .hint {
+    font-size: 0.75rem; color: var(--muted); text-align: center;
+    margin-top: 1.2rem; line-height: 1.5; max-width: 640px;
+  }
+  .hint a { color: var(--accent); }
+
+  .back-link {
+    position: fixed;
+    top: calc(0.9rem + env(safe-area-inset-top, 0px));
+    left: calc(0.9rem + env(safe-area-inset-left, 0px));
+    z-index: 50;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    background: rgba(17,24,39,0.85); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--accent); text-decoration: none;
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.05em;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .back-link:hover { border-color: var(--accent); color: #7fd4ff; }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="index.html">‹ Menu</a>
+
+
+<header>
+  <h1>Cadence Trainer</h1>
+  <p>Learn the four cadences, then test your ear</p>
+</header>
+
+<div class="top-controls">
+  <div class="control-group">
+    <label>Mode</label>
+    <div class="tab-row" id="modeTab">
+      <button class="tab active" data-mode="learn">Learn</button>
+      <button class="tab" data-mode="practice">Practice</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>Key</label>
+    <select id="keySelect"></select>
+  </div>
+  <div class="control-group">
+    <label>Tonality</label>
+    <div class="tab-row" id="tonalityTab">
+      <button class="tab active" data-tonality="major">Major</button>
+      <button class="tab" data-tonality="minor">Minor</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEARN MODE -->
+<div id="learnView">
+  <div class="panel">
+    <h2 id="learnHeading">Cadences in C Major</h2>
+    <div class="cadence-list" id="cadenceList"></div>
+  </div>
+
+  <div class="panel">
+    <div class="kb-caption" id="kbCaption">Tap a cadence above to see and hear it</div>
+    <div class="kb-scroll">
+      <div class="piano-case"><div class="piano" id="learnPiano"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRACTICE MODE -->
+<div id="practiceView" class="hidden">
+  <div class="panel quiz-q">
+    <h2>Identify the Cadence</h2>
+    <p class="quiz-prompt" id="quizPrompt">Press play and listen, then pick which cadence you heard.</p>
+    <div class="play-row" style="justify-content:center;">
+      <button class="btn primary" id="quizPlay">▶ Play</button>
+      <button class="btn" id="quizReplay" disabled>Replay</button>
+    </div>
+    <div class="feedback" id="quizFeedback"></div>
+    <div class="quiz-options" id="quizOptions" style="margin-top:1.2rem;"></div>
+    <div class="score-row">
+      <span>Correct: <b id="scoreRight">0</b></span>
+      <span>Tried: <b id="scoreTotal">0</b></span>
+      <span>Streak: <b id="scoreStreak">0</b></span>
+    </div>
+    <div class="play-row" style="justify-content:center; margin-top:1.2rem;">
+      <button class="btn" id="quizNext" disabled>Next →</button>
+    </div>
+  </div>
+  <div class="hint">Tip: the authentic cadence sounds final, the half cadence sounds unfinished, plagal is the gentle "Amen," and deceptive surprises you by not landing where you expect.</div>
+</div>
+
+<div class="hint" id="globalHint">All audio is generated in your browser — works offline. Best with sound on.</div>
+
+<script>
+const NOTES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+// keys that conventionally use flats
+const FLAT_ROOTS = new Set([5,10,3,8,1,6]);       // F Bb Eb Ab Db Gb major
+const FLAT_MINOR_ROOTS = new Set([2,7,0,5,10,3]); // D G C F Bb Eb minor
+function keyUsesFlats() {
+  return currentTonality === 'minor'
+    ? FLAT_MINOR_ROOTS.has(currentKey)
+    : FLAT_ROOTS.has(currentKey);
+}
+function nameFor(pc) {
+  return (keyUsesFlats() ? NOTES_FLAT : NOTES_SHARP)[((pc%12)+12)%12];
+}
+
+// Major-scale degree -> semitone offset from tonic
+const MAJOR = [0,2,4,5,7,9,11];
+// triad qualities on each major-scale degree (semitone stack from chord root)
+// I major, ii minor, iii minor, IV major, V major, vi minor, vii° dim
+function triadOffsets(quality) {
+  if (quality === 'maj') return [0,4,7];
+  if (quality === 'min') return [0,3,7];
+  if (quality === 'dim') return [0,3,6];
+  return [0,4,7];
+}
+
+// Each cadence defines its two chords PER tonality. A chord is
+// { off (semitones above tonic), q (quality), roman }.
+// Minor uses the raised leading tone, so the V is MAJOR (harmonic minor).
+const CADENCES = [
+  {
+    id:'authentic', name:'Authentic Cadence',
+    desc:'The strongest resolution — sounds final and complete. Most songs end here.',
+    major: { roman:'V → I',  chords:[ {off:7,q:'maj',roman:'V'}, {off:0,q:'maj',roman:'I'} ] },
+    minor: { roman:'V → i',  chords:[ {off:7,q:'maj',roman:'V'}, {off:0,q:'min',roman:'i'} ] },
+  },
+  {
+    id:'plagal', name:'Plagal Cadence',
+    desc:'The gentle "Amen" cadence. Settled and warm, common at the end of hymns.',
+    major: { roman:'IV → I', chords:[ {off:5,q:'maj',roman:'IV'}, {off:0,q:'maj',roman:'I'} ] },
+    minor: { roman:'iv → i', chords:[ {off:5,q:'min',roman:'iv'}, {off:0,q:'min',roman:'i'} ] },
+  },
+  {
+    id:'half', name:'Half Cadence',
+    desc:'Ends on the V chord — sounds unfinished, like a comma. It wants to continue.',
+    major: { roman:'I → V',  chords:[ {off:0,q:'maj',roman:'I'}, {off:7,q:'maj',roman:'V'} ] },
+    minor: { roman:'i → V',  chords:[ {off:0,q:'min',roman:'i'}, {off:7,q:'maj',roman:'V'} ] },
+  },
+  {
+    id:'deceptive', name:'Deceptive Cadence',
+    desc:'A surprise — your ear expects the tonic after V, but it lands somewhere else instead.',
+    major: { roman:'V → vi',  chords:[ {off:7,q:'maj',roman:'V'}, {off:9,q:'min',roman:'vi'} ] },
+    minor: { roman:'V → ♭VI', chords:[ {off:7,q:'maj',roman:'V'}, {off:8,q:'maj',roman:'♭VI'} ] },
+  },
+];
+
+// Return the active chord pair for a cadence in the current tonality.
+function cadChords(cad) { return (currentTonality === 'minor' ? cad.minor : cad.major).chords; }
+function cadRoman(cad)  { return (currentTonality === 'minor' ? cad.minor : cad.major).roman; }
+
+// ----- KEY SELECT -----
+const CIRCLE_OF_FIFTHS = [0,7,2,9,4,11,6,1,8,3,10,5];
+let currentKey = 0;            // pitch class of tonic
+let currentTonality = 'major'; // 'major' | 'minor'
+const keySelect = document.getElementById('keySelect');
+function populateKeys() {
+  keySelect.innerHTML = '';
+  CIRCLE_OF_FIFTHS.forEach(pc => {
+    const opt = document.createElement('option');
+    opt.value = pc;
+    const sharp = NOTES_SHARP[pc], flat = NOTES_FLAT[pc];
+    const flatside = (currentTonality === 'minor' ? FLAT_MINOR_ROOTS : FLAT_ROOTS).has(pc);
+    const base = (flatside ? flat : sharp);
+    opt.textContent = base + (currentTonality === 'minor' ? ' Minor' : ' Major');
+    keySelect.appendChild(opt);
+  });
+  keySelect.value = currentKey;
+}
+populateKeys();
+
+// ----- AUDIO (Web Audio API) -----
+let audioCtx = null;
+function ctx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+// play a chord (array of midi notes) at time t for dur seconds
+function playChord(midis, t, dur) {
+  const ac = ctx();
+  const master = ac.createGain();
+  master.gain.setValueAtTime(0.0001, t);
+  master.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+  master.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  master.connect(ac.destination);
+  midis.forEach(m => {
+    const osc = ac.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = midiToFreq(m);
+    const g = ac.createGain();
+    g.gain.value = 0.33;
+    osc.connect(g); g.connect(master);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  });
+}
+
+// Build the midi notes for a chord object {off,q} in the current key.
+function chordMidis(chord) {
+  const rootPc = (currentKey + chord.off) % 12;
+  const base = 60 + ((rootPc + 12) % 12); // place root at/above middle C
+  return triadOffsets(chord.q).map(o => base + o);
+}
+
+// Play a full cadence (its two chords).
+function playCadence(cad) {
+  const ac = ctx();
+  if (ac.state === 'suspended') ac.resume();
+  const t0 = ac.currentTime + 0.05;
+  const each = 0.9;
+  cadChords(cad).forEach((chord, i) => {
+    playChord(chordMidis(chord), t0 + i * each, each * 0.95);
+  });
+}
+
+// ----- MINI KEYBOARD (learn mode) -----
+const KB_FIRST = 60, KB_LAST = 60 + 19; // ~1.6 octaves, enough for two triads
+const BLACK_PC = new Set([1,3,6,8,10]);
+const kbIsBlack = m => BLACK_PC.has(((m%12)+12)%12);
+function buildKeyboard() {
+  const piano = document.getElementById('learnPiano');
+  piano.innerHTML = '';
+  let wc = 0; const before = {};
+  for (let m = KB_FIRST; m <= KB_LAST; m++) { before[m] = wc; if (!kbIsBlack(m)) wc++; }
+  const WW = 26, BW = 16;
+  const blacks = [];
+  for (let m = KB_FIRST; m <= KB_LAST; m++) {
+    if (kbIsBlack(m)) { blacks.push(m); continue; }
+    const k = document.createElement('div');
+    k.className = 'wk'; k.setAttribute('data-abs', m);
+    const l = document.createElement('span'); l.className = 'lbl'; k.appendChild(l);
+    piano.appendChild(k);
+  }
+  blacks.forEach(m => {
+    const k = document.createElement('div');
+    k.className = 'bk'; k.setAttribute('data-abs', m);
+    k.style.left = (before[m] * WW - BW/2) + 'px';
+    const l = document.createElement('span'); l.className = 'lbl'; k.appendChild(l);
+    piano.appendChild(k);
+  });
+  piano.style.width = (wc * WW) + 'px';
+}
+
+function clearKeyboard() {
+  document.querySelectorAll('#learnPiano .wk, #learnPiano .bk').forEach(k => {
+    k.classList.remove('c1','c2');
+    const l = k.querySelector('.lbl'); if (l) l.textContent = '';
+  });
+}
+
+// light the two chords of a cadence (chord1 cyan, chord2 indigo)
+function showCadenceOnKeyboard(cad) {
+  clearKeyboard();
+  const piano = document.getElementById('learnPiano');
+  cadChords(cad).forEach((chord, idx) => {
+    const cls = idx === 0 ? 'c1' : 'c2';
+    chordMidis(chord).forEach(m => {
+      const key = piano.querySelector('[data-abs="' + m + '"]');
+      if (key) {
+        key.classList.add(cls);
+        const l = key.querySelector('.lbl');
+        if (l) l.textContent = nameFor(m % 12);
+      }
+    });
+  });
+}
+
+function cadenceRomanText(cad) { return cadRoman(cad); }
+function cadenceChordNames(cad) {
+  return cadChords(cad).map(chord => {
+    const rootPc = (currentKey + chord.off) % 12;
+    const suffix = chord.q === 'min' ? 'm' : (chord.q === 'dim' ? '°' : '');
+    return nameFor(rootPc) + suffix;
+  }).join('  →  ');
+}
+
+// ----- LEARN VIEW RENDER -----
+let activeCadenceId = null;
+function renderLearn() {
+  const keyName = nameFor(currentKey);
+  const tonalWord = currentTonality === 'minor' ? ' Minor' : ' Major';
+  document.getElementById('learnHeading').textContent = 'Cadences in ' + keyName + tonalWord;
+  const list = document.getElementById('cadenceList');
+  list.innerHTML = '';
+  CADENCES.forEach(cad => {
+    const card = document.createElement('div');
+    card.className = 'cadence-card' + (cad.id === activeCadenceId ? ' active' : '');
+    card.innerHTML =
+      '<div class="cadence-top"><span class="cadence-name">' + cad.name +
+      '</span><span class="cadence-roman">' + cadenceRomanText(cad) + '</span></div>' +
+      '<div class="cadence-chords">' + cadenceChordNames(cad) + '</div>' +
+      '<div class="cadence-desc">' + cad.desc + '</div>' +
+      '<div class="play-row"><button class="btn primary">▶ Play</button>' +
+      '<button class="btn">Show on keyboard</button></div>';
+    const [playBtn, showBtn] = card.querySelectorAll('button');
+    playBtn.addEventListener('click', e => { e.stopPropagation(); selectCadence(cad); playCadence(cad); });
+    showBtn.addEventListener('click', e => { e.stopPropagation(); selectCadence(cad); });
+    card.addEventListener('click', () => { selectCadence(cad); playCadence(cad); });
+    list.appendChild(card);
+  });
+}
+
+function selectCadence(cad) {
+  activeCadenceId = cad.id;
+  document.querySelectorAll('.cadence-card').forEach(c => c.classList.remove('active'));
+  // re-mark active
+  const idx = CADENCES.findIndex(c => c.id === cad.id);
+  const cards = document.querySelectorAll('.cadence-card');
+  if (cards[idx]) cards[idx].classList.add('active');
+  showCadenceOnKeyboard(cad);
+  const cap = document.getElementById('kbCaption');
+  cap.innerHTML = '<span class="hl">' + cad.name + '</span>  ·  ' + cadenceChordNames(cad);
+}
+
+// ----- PRACTICE MODE -----
+let quiz = { answer: null, answered: false, right: 0, total: 0, streak: 0 };
+
+function newQuestion() {
+  quiz.answer = CADENCES[Math.floor(Math.random() * CADENCES.length)];
+  quiz.answered = false;
+  document.getElementById('quizFeedback').textContent = '';
+  document.getElementById('quizFeedback').className = 'feedback';
+  document.getElementById('quizReplay').disabled = true;
+  document.getElementById('quizNext').disabled = true;
+  document.getElementById('quizPlay').disabled = false;
+  document.getElementById('quizPrompt').textContent =
+    'Press play and listen, then pick which cadence you heard.';
+  const opts = document.getElementById('quizOptions');
+  opts.innerHTML = '';
+  CADENCES.forEach(cad => {
+    const b = document.createElement('button');
+    b.className = 'quiz-opt';
+    b.innerHTML = '<div class="qn">' + cad.name.replace(' Cadence','') +
+      '</div><div class="qr">' + cadenceRomanText(cad) + '</div>';
+    b.addEventListener('click', () => answer(cad, b));
+    opts.appendChild(b);
+  });
+}
+
+function answer(cad, btn) {
+  if (quiz.answered) return;
+  quiz.answered = true;
+  quiz.total++;
+  const correct = cad.id === quiz.answer.id;
+  const fb = document.getElementById('quizFeedback');
+  const optButtons = document.querySelectorAll('.quiz-opt');
+  optButtons.forEach((b, i) => {
+    b.disabled = true;
+    if (CADENCES[i].id === quiz.answer.id) b.classList.add('correct');
+  });
+  if (correct) {
+    quiz.right++; quiz.streak++;
+    fb.textContent = '✓ Correct — ' + quiz.answer.name;
+    fb.className = 'feedback ok';
+  } else {
+    quiz.streak = 0;
+    btn.classList.add('wrong');
+    fb.textContent = '✗ That was the ' + quiz.answer.name;
+    fb.className = 'feedback no';
+  }
+  document.getElementById('scoreRight').textContent = quiz.right;
+  document.getElementById('scoreTotal').textContent = quiz.total;
+  document.getElementById('scoreStreak').textContent = quiz.streak;
+  document.getElementById('quizNext').disabled = false;
+}
+
+document.getElementById('quizPlay').addEventListener('click', () => {
+  if (quiz.answer) { playCadence(quiz.answer); document.getElementById('quizReplay').disabled = false; }
+});
+document.getElementById('quizReplay').addEventListener('click', () => {
+  if (quiz.answer) playCadence(quiz.answer);
+});
+document.getElementById('quizNext').addEventListener('click', newQuestion);
+
+// ----- MODE SWITCH -----
+let mode = 'learn';
+document.getElementById('modeTab').addEventListener('click', e => {
+  if (!e.target.matches('.tab')) return;
+  document.querySelectorAll('#modeTab .tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  mode = e.target.dataset.mode;
+  document.getElementById('learnView').classList.toggle('hidden', mode !== 'learn');
+  document.getElementById('practiceView').classList.toggle('hidden', mode !== 'practice');
+  if (mode === 'practice' && quiz.total === 0 && !quiz.answer) newQuestion();
+});
+
+// ----- KEY CHANGE -----
+keySelect.addEventListener('change', e => {
+  currentKey = parseInt(e.target.value);
+  renderLearn();
+  if (activeCadenceId) {
+    const cad = CADENCES.find(c => c.id === activeCadenceId);
+    if (cad) selectCadence(cad);
+  }
+});
+
+// ----- TONALITY CHANGE -----
+document.getElementById('tonalityTab').addEventListener('click', e => {
+  if (!e.target.matches('.tab')) return;
+  document.querySelectorAll('#tonalityTab .tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  currentTonality = e.target.dataset.tonality;
+  populateKeys();
+  renderLearn();
+  if (activeCadenceId) {
+    const cad = CADENCES.find(c => c.id === activeCadenceId);
+    if (cad) selectCadence(cad);
+  }
+});
+
+// ----- INIT -----
+buildKeyboard();
+renderLearn();
+newQuestion();
+</script>
+</body>
+</html>
